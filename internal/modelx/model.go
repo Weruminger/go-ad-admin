@@ -88,13 +88,13 @@ func (b *Base) pickStore(u string) (Store, *url.URL, error) {
 // package modelx
 
 func (b *Base) SetErr(op errs.Op, code errs.Code, err error, fields map[string]any) {
-	b.SetErr(op, code, err, fields)
+	b.setErr(op, code, err, fields)
 }
 
 func (b *Base) PickStore(uri string) (Store, *url.URL, error) {
-	return b.PickStore(uri)
+	return b.pickStore(uri)
 }
 
 func (b *Base) PickCodec(format string) (Codec, error) {
-	return b.PickCodec(format)
+	return b.pickCodec(format)
 }
