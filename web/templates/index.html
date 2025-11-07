@@ -1,6 +1,6 @@
-{{define "index.html"}}{{template "layout" .}}{{define "content"}}
-<p>Hallo! Server läuft.</p>
-<ul>
-	<li><a href="/healthz">Health</a></li>
-</ul>
-{{end}}{{end}}
+{{define "content"}}
+<p>Server läuft. Env: <code>{{.Env}}</code></p>
+<p>Healthcheck: <a href="/healthz">/healthz</a></p>
+{{end}}
+
+{{template "layout" .}}

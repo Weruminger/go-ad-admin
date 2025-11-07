@@ -17,12 +17,12 @@ type Config struct {
 
 func FromEnv() Config {
 	return Config{
-		ListenAddr:   getenv("GOAD_LISTEN", ":8080"),
-		Env:          getenv("GOAD_ENV", "dev"),
-		SessionKey:   getenv("GOAD_SESSION_KEY", randKey(32)),
-		LDAPURL:      getenv("GOAD_LDAP_URL", "ldap://127.0.0.1:389"),
-		LDAPBaseDN:   getenv("GOAD_LDAP_BASEDN", "dc=example,dc=com"),
-		PrivacyLevel: getenv("GOAD_PRIVACY", "low"),
+		ListenAddr:   getenv("GO_AD_LISTEN", ":8080"),
+		Env:          getenv("GO_AD_ENV", "dev"),
+		SessionKey:   getenv("GO_AD_SESSION_KEY", randKey(32)),
+		LDAPURL:      getenv("GO_AD_LDAP_URL", "ldap://127.0.0.1:389"),
+		LDAPBaseDN:   getenv("GO_AD_LDAP_BASEDN", "dc=example,dc=com"),
+		PrivacyLevel: getenv("GO_AD_PRIVACY", "low"),
 	}
 }
 

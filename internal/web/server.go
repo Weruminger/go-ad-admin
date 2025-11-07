@@ -1,11 +1,12 @@
 package web
 
 import (
+	"fmt"
 	"html/template"
-	"log"
 	"net/http"
 
 	"github.com/Weruminger/go-ad-admin/internal/config"
+	"github.com/Weruminger/go-ad-admin/internal/errs"
 )
 
 type Server struct {
@@ -14,24 +15,28 @@ type Server struct {
 }
 
 func NewServer(cfg config.Config) *Server {
-	tpl := template.Must(template.ParseFS(templates, "templates/*.html"))
-	return &Server{cfg: cfg, tpl: tpl}
+	t := template.Must(template.ParseGlob("web/templates/*.html"))
+	return &Server{cfg: cfg, tpl: t}
 }
 
 func (s *Server) routes() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", s.handleIndex)
-	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(200); _, _ = w.Write([]byte("ok")) })
-	return mux
-}
-
-func ListenAndServe(cfg config.Config) error {
-	s := NewServer(cfg)
-	log.Printf("listening on %s (env=%s)", cfg.ListenAddr, cfg.Env)
-	return http.ListenAndServe(cfg.ListenAddr, s.routes())
+	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(204)
+	})
+	return withReqID(mux)
 }
 
 func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
-	data := map[string]any{"Env": s.cfg.Env}
-	_ = s.tpl.ExecuteTemplate(w, "index.html", data)
+	q := r.URL.Query().Get("q")
+	if len(q) > 256 {
+		writeError(w, r, errs.New("web.Index", errs.InvalidInput, fmt.Errorf("q>256"), map[string]any{"len": len(q)}))
+		return
+	}
+	_ = s.tpl.ExecuteTemplate(w, "layout", map[string]any{"Env": s.cfg.Env})
+}
+
+func ListenAndServe(cfg config.Config) error {
+	return http.ListenAndServe(cfg.ListenAddr, NewServer(cfg).routes())
 }
