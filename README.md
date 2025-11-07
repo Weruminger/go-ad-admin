@@ -14,14 +14,14 @@ go run ./cmd/go-ad-admin
 
 ## Configuration (env)
 
-| VAR | Default | Description |
-|-----|---------|-------------|
-| GOAD_LISTEN | :8080 | Bind address |
-| GOAD_ENV | dev | dev/prod |
-| GOAD_SESSION_KEY | (random at start) | 32+ bytes recommended |
-| GOAD_LDAP_URL | ldap://127.0.0.1:389 | LDAP/LDAPS URL |
-| GOAD_LDAP_BASEDN | dc=example,dc=com | Base DN |
-| GOAD_PRIVACY | low | low/high (pseudonymize listings) |
+| VAR               | Default | Description |
+|-------------------|---------|-------------|
+| GO_AD_LISTEN      | :8080 | Bind address |
+| GO_AD_ENV         | dev | dev/prod |
+| GO_AD_SESSION_KEY | (random at start) | 32+ bytes recommended |
+| GO_AD_LDAP_URL    | ldap://127.0.0.1:389 | LDAP/LDAPS URL |
+| GO_AD_LDAP_BASEDN | dc=example,dc=com | Base DN |
+| GO_AD_PRIVACY     | low | low/high (pseudonymize listings) |
 
 ## Layout
 

@@ -20,16 +20,23 @@ func TestFromEnvDefaults(t *testing.T) {
 }
 
 func TestFromEnvOverrides(t *testing.T) {
-	os.Setenv("GOAD_LISTEN", ":9090")
-	os.Setenv("GOAD_ENV", "prod")
-	os.Setenv("GOAD_SESSION_KEY", "abc123")
+	var err error
+	if err = os.Setenv("GO_AD_LISTEN", ":8080"); err != nil {
+		t.Fatal(err)
+	}
+	if err = os.Setenv("GO_AD_ENV", "dev"); err != nil {
+		t.Fatal(err)
+	}
+	if err = os.Setenv("GO_AD_SESSION_KEY", "abc123"); err != nil {
+		t.Fatal(err)
+	}
 	defer os.Clearenv()
 
 	c := FromEnv()
-	if c.ListenAddr != ":9090" {
+	if c.ListenAddr != ":8080" {
 		t.Fatalf("got %s", c.ListenAddr)
 	}
-	if c.Env != "prod" {
+	if c.Env != "dev" {
 		t.Fatalf("got %s", c.Env)
 	}
 	if c.SessionKey != "abc123" {
