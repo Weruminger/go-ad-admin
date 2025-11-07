@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
+	"path/filepath"
 
 	"github.com/Weruminger/go-ad-admin/internal/config"
 	"github.com/Weruminger/go-ad-admin/internal/errs"
@@ -15,7 +16,20 @@ type Server struct {
 }
 
 func NewServer(cfg config.Config) *Server {
-	t := template.Must(template.ParseGlob("web/templates/*.html"))
+	const glob = "web/templates/*.html"
+	t, err := template.ParseGlob(glob)
+	if err != nil || t == nil {
+		t = template.Must(template.New("layout").Parse(`{{define "layout"}}<!doctype html><html><head><meta charset="utf-8"><title>go-ad-admin</title></head><body>
+<main><h1>go-ad-admin</h1><p>Env: {{.Env}}</p></main>
+</body></html>{{end}}`))
+	} else {
+		matches, _ := filepath.Glob(glob)
+		if len(matches) == 0 {
+			t = template.Must(template.New("layout").Parse(`{{define "layout"}}<!doctype html><html><head><meta charset="utf-8"><title>go-ad-admin</title></head><body>
+<main><h1>go-ad-admin</h1><p>Env: {{.Env}}</p></main>
+</body></html>{{end}}`))
+		}
+	}
 	return &Server{cfg: cfg, tpl: t}
 }
 

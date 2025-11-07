@@ -42,6 +42,9 @@ func writeError(w http.ResponseWriter, r *http.Request, err error) {
 			code = e.Code
 		}
 	}
+	if rid := r.Header.Get("X-Request-ID"); rid != "" {
+		w.Header().Set("X-Request-ID", rid)
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
