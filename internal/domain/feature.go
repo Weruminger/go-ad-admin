@@ -26,24 +26,24 @@ func (f *FeatureSpec) Load(ctx context.Context, uri string) *FeatureSpec {
 	if f.Err() != nil {
 		return f
 	}
-	store, _, err := f.pickStore(uri)
+	store, _, err := f.Base.PickStore(uri)
 	if err != nil {
-		f.setErr("feature.Load", errs.InvalidInput, err, map[string]any{"uri": uri})
+		f.Base.SetErr("feature.Load", errs.InvalidInput, err, map[string]any{"uri": uri})
 		return f
 	}
 	raw, err := store.Load(ctx, uri)
 	if err != nil {
-		f.setErr("feature.Load", errs.NotFound, err, map[string]any{"uri": uri})
+		f.Base.SetErr("feature.Load", errs.NotFound, err, map[string]any{"uri": uri})
 		return f
 	}
 	format := modelxFormatFromURI(uri, f.Base)
-	cdc, err := f.pickCodec(format)
+	cdc, err := f.Base.PickCodec(format)
 	if err != nil {
-		f.setErr("feature.Load", errs.InvalidInput, err, map[string]any{"fmt": format})
+		f.Base.SetErr("feature.Load", errs.InvalidInput, err, map[string]any{"fmt": format})
 		return f
 	}
 	if err := cdc.Unmarshal(raw, f); err != nil {
-		f.setErr("feature.Load", errs.InvalidInput, err, map[string]any{"fmt": cdc.Format()})
+		f.Base.SetErr("feature.Load", errs.InvalidInput, err, map[string]any{"fmt": cdc.Format()})
 		return f
 	}
 	return f
@@ -53,30 +53,30 @@ func (f *FeatureSpec) Save(ctx context.Context, uri string, format string) *Feat
 	if f.Err() != nil {
 		return f
 	}
-	cdc, err := f.pickCodec(format)
+	cdc, err := f.Base.PickCodec(format)
 	if err != nil {
-		f.setErr("feature.Save", errs.InvalidInput, err, map[string]any{"fmt": format})
+		f.Base.SetErr("feature.Save", errs.InvalidInput, err, map[string]any{"fmt": format})
 		return f
 	}
 	raw, err := cdc.Marshal(f)
 	if err != nil {
-		f.setErr("feature.Save", errs.Internal, err, map[string]any{"fmt": cdc.Format()})
+		f.Base.SetErr("feature.Save", errs.Internal, err, map[string]any{"fmt": cdc.Format()})
 		return f
 	}
-	store, _, err := f.pickStore(uri)
+	store, _, err := f.Base.PickStore(uri)
 	if err != nil {
-		f.setErr("feature.Save", errs.InvalidInput, err, map[string]any{"uri": uri})
+		f.Base.SetErr("feature.Save", errs.InvalidInput, err, map[string]any{"uri": uri})
 		return f
 	}
 	if err := store.Save(ctx, uri, raw); err != nil {
-		f.setErr("feature.Save", errs.Unavailable, err, map[string]any{"uri": uri})
+		f.Base.SetErr("feature.Save", errs.Unavailable, err, map[string]any{"uri": uri})
 		return f
 	}
 	return f
 }
 
 func (f *FeatureSpec) Serialize(format string) (string, error) {
-	cdc, err := f.pickCodec(format)
+	cdc, err := f.Base.PickCodec(format)
 	if err != nil {
 		return "", errs.Wrap("feature.Serialize", err, errs.InvalidInput)
 	}
@@ -91,13 +91,13 @@ func (f *FeatureSpec) Deserialize(format, data string) *FeatureSpec {
 	if f.Err() != nil {
 		return f
 	}
-	cdc, err := f.pickCodec(format)
+	cdc, err := f.Base.PickCodec(format)
 	if err != nil {
-		f.setErr("feature.Deserialize", errs.InvalidInput, err, map[string]any{"fmt": format})
+		f.Base.SetErr("feature.Deserialize", errs.InvalidInput, err, map[string]any{"fmt": format})
 		return f
 	}
 	if err := cdc.Unmarshal([]byte(data), f); err != nil {
-		f.setErr("feature.Deserialize", errs.InvalidInput, err, map[string]any{"fmt": cdc.Format()})
+		f.Base.SetErr("feature.Deserialize", errs.InvalidInput, err, map[string]any{"fmt": cdc.Format()})
 	}
 	return f
 }

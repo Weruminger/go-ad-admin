@@ -52,7 +52,7 @@ func (u *ADUser) SetInvalid(op errs.Op, field, msg string) {
 }
 
 func (u *ADUser) BaseSetErr(op errs.Op, code errs.Code, err error, fields map[string]any) {
-	u.setErr(op, code, err, fields)
+	u.Base.SetErr(op, code, err, fields)
 }
 
 func (u *ADUser) Load(ctx context.Context, uri string) *ADUser {
@@ -60,23 +60,23 @@ func (u *ADUser) Load(ctx context.Context, uri string) *ADUser {
 		return u
 	}
 	op := errs.Op("aduser.Load")
-	store, _, err := u.pickStore(uri)
+	store, _, err := u.Base.PickStore(uri)
 	if err != nil {
-		u.setErr(op, errs.InvalidInput, err, map[string]any{"uri": uri})
+		u.Base.SetErr(op, errs.InvalidInput, err, map[string]any{"uri": uri})
 		return u
 	}
 	raw, err := store.Load(ctx, uri)
 	if err != nil {
-		u.setErr(op, errs.NotFound, err, map[string]any{"uri": uri})
+		u.Base.SetErr(op, errs.NotFound, err, map[string]any{"uri": uri})
 		return u
 	}
-	cdc, err := u.pickCodec(modelxFormatFromURI(uri, u.Base))
+	cdc, err := u.Base.PickCodec(modelxFormatFromURI(uri, u.Base))
 	if err != nil {
-		u.setErr(op, errs.InvalidInput, err, nil)
+		u.Base.SetErr(op, errs.InvalidInput, err, nil)
 		return u
 	}
 	if err := cdc.Unmarshal(raw, u); err != nil {
-		u.setErr(op, errs.InvalidInput, err, nil)
+		u.Base.SetErr(op, errs.InvalidInput, err, nil)
 		return u
 	}
 	return u.Validate()
@@ -91,30 +91,30 @@ func (u *ADUser) Save(ctx context.Context, uri, format string) *ADUser {
 	if u.Err() != nil {
 		return u
 	}
-	cdc, err := u.pickCodec(format)
+	cdc, err := u.Base.PickCodec(format)
 	if err != nil {
-		u.setErr(op, errs.InvalidInput, err, map[string]any{"fmt": format})
+		u.Base.SetErr(op, errs.InvalidInput, err, map[string]any{"fmt": format})
 		return u
 	}
 	raw, err := cdc.Marshal(u)
 	if err != nil {
-		u.setErr(op, errs.Internal, err, nil)
+		u.Base.SetErr(op, errs.Internal, err, nil)
 		return u
 	}
-	store, _, err := u.pickStore(uri)
+	store, _, err := u.Base.PickStore(uri)
 	if err != nil {
-		u.setErr(op, errs.InvalidInput, err, map[string]any{"uri": uri})
+		u.Base.SetErr(op, errs.InvalidInput, err, map[string]any{"uri": uri})
 		return u
 	}
 	if err := store.Save(ctx, uri, raw); err != nil {
-		u.setErr(op, errs.Unavailable, err, nil)
+		u.Base.SetErr(op, errs.Unavailable, err, nil)
 		return u
 	}
 	return u
 }
 
 func (u *ADUser) Serialize(format string) (string, error) {
-	cdc, err := u.pickCodec(format)
+	cdc, err := u.Base.PickCodec(format)
 	if err != nil {
 		return "", errs.Wrap("aduser.Serialize", err, errs.InvalidInput)
 	}
@@ -129,13 +129,13 @@ func (u *ADUser) Deserialize(format, data string) *ADUser {
 	if u.Err() != nil {
 		return u
 	}
-	cdc, err := u.pickCodec(format)
+	cdc, err := u.Base.PickCodec(format)
 	if err != nil {
-		u.setErr("aduser.Deserialize", errs.InvalidInput, err, nil)
+		u.Base.SetErr("aduser.Deserialize", errs.InvalidInput, err, nil)
 		return u
 	}
 	if err := cdc.Unmarshal([]byte(data), u); err != nil {
-		u.setErr("aduser.Deserialize", errs.InvalidInput, err, nil)
+		u.Base.SetErr("aduser.Deserialize", errs.InvalidInput, err, nil)
 		return u
 	}
 	return u.Validate()
