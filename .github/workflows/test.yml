@@ -6,10 +6,10 @@ on:
     branches: [ main, develop ]
   push:
     tags:
-      - 'v*'        # optional: Release beim Tag-Push, z.B. v1.2.3
+      - 'v*'
 
 permissions:
-  contents: write   # nötig für Release + Assets
+  contents: write
 
 jobs:
   test:
@@ -22,24 +22,33 @@ jobs:
           go-version: '1.22.x'
           cache: true
 
-      - run: go mod tidy
-      - run: make test
+      # 🔧 Module sauber auflösen (vermeidet go.sum-Fehler)
+      - run: |
+          go mod tidy
+          go mod download
+          go mod verify
 
-      # Coverage erzeugen
-      - run: go test ./... -coverprofile=coverage.out -covermode=atomic
+      # 👣 BDD-Features explizit laufen lassen (schön im Log getrennt)
+      - name: Run BDD features (godog via go test)
+        run: go test -v ./internal/bdd -run TestFeatures
 
-      # Coverage als Artifact sichern
+      # 🧪 restliche Tests
+      - name: Run unit tests
+        run: go test ./...
+
+      # 📈 Coverage
+      - name: Coverage
+        run: go test ./... -coverprofile=coverage.out -covermode=atomic
+
       - uses: actions/upload-artifact@v4
         with:
           name: coverage
           path: coverage.out
 
-  # Plattform-übergreifend bauen (nur wenn Release-fähig getriggert)
   build-binaries:
     needs: test
     if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
-
     strategy:
       fail-fast: false
       matrix:
@@ -52,20 +61,15 @@ jobs:
             goarch: arm64
           - goos: windows
             goarch: amd64
-
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-go@v5
         with:
           go-version: '1.22.x'
           cache: true
-
-      # 🔧 sicherstellen, dass go.sum vollständig ist
       - run: |
           go mod tidy
           go mod verify
-
       - id: meta
         run: |
           VERSION=$(cat version.txt 2>/dev/null || echo "0.0.0")
@@ -74,7 +78,6 @@ jobs:
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
           echo "branch=${BRANCH}"   >> "$GITHUB_OUTPUT"
           echo "epoch=${EPOCH}"     >> "$GITHUB_OUTPUT"
-
       - name: Build ${{ matrix.goos }}-${{ matrix.goarch }}
         env:
           GOOS: ${{ matrix.goos }}
@@ -87,66 +90,45 @@ jobs:
         run: |
           OUT_DIR="dist"
           mkdir -p "$OUT_DIR"
-
-          # Windows-Extension korrekt setzen
           EXE=""
           if [ "${GOOS}" = "windows" ]; then EXE=".exe"; fi
-
           BIN="go-ad-admin_${GOOS}_${GOARCH}${EXE}"
-
           LDFLAGS="-X '${PKG}/internal/app.VersionBase=${VERSION}' \
                    -X '${PKG}/internal/app.GitBranch=${BRANCH}' \
                    -X '${PKG}/internal/app.BuildEpoch=${EPOCH}'"
-
-          # Build
           go build -ldflags "$LDFLAGS" -o "${OUT_DIR}/${BIN}" ./cmd/go-ad-admin
-
-          # Packen
           cd "$OUT_DIR"
           if [ "${GOOS}" = "windows" ]; then
-            ARCHIVE="${BIN%.exe}.zip"
-            zip "${ARCHIVE}" "${BIN}"
+            zip "${BIN%.exe}.zip" "${BIN}"
             rm -f "${BIN}"
           else
-            ARCHIVE="${BIN}.tar.gz"
-            tar -czf "${ARCHIVE}" "${BIN}"
+            tar -czf "${BIN}.tar.gz" "${BIN}"
             rm -f "${BIN}"
           fi
           ls -lah
-
       - uses: actions/upload-artifact@v4
         with:
           name: dist-${{ matrix.goos }}-${{ matrix.goarch }}
           path: dist/*
 
-  # Release erstellen und Assets anhängen
   release:
     needs: build-binaries
     if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
-
-      # Version erneut lesen (für tag/name)
       - id: meta
         run: |
           VERSION=$(cat version.txt 2>/dev/null || echo "0.0.0")
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
-
-      # Alle gebauten Artefakte einsammeln
       - uses: actions/download-artifact@v4
         with:
           path: dist-collect
-
-      # Optional: zusammenführen nach dist/
       - name: Merge artifacts
         run: |
           mkdir -p dist
           find dist-collect -type f -maxdepth 2 -exec cp {} dist/ \;
           ls -lah dist
-
-      # Release erzeugen (Tag = v<version>), Assets anhängen
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:

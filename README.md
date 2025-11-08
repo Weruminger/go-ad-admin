@@ -33,4 +33,4 @@ go run ./cmd/go-ad-admin
 - `internal/kea` – Kea HTTP client (to be implemented)
 - `web/templates` – Go `html/template` files
 - `docs` – Requirements & Use Cases
-- `specs` – BDD Gherkin features
+- `features` – BDD Gherkin features
