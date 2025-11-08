@@ -24,7 +24,7 @@ func TestWriteError_Mapping(t *testing.T) {
 		{errs.New("ldap.Get", errs.NotFound, fmt.Errorf("dn"), nil), http.StatusNotFound, `"code":"NOT_FOUND"`},
 		{fmt.Errorf("raw"), http.StatusInternalServerError, `"code":"INTERNAL"`},
 	}
-	_ = NewServer(config.FromEnv()) // just ensure it builds
+	_ = NewServer(*(config.NewDefaultConfig())) // just ensure it builds
 
 	for _, c := range cases {
 		rec := testx.NewRecorder()

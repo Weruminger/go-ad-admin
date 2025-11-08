@@ -1,23 +1,153 @@
-name: Go CI (build, test, coverage)
+name: Go CI (build, test, coverage, release)
 
 on:
   workflow_dispatch: {}
   pull_request:
     branches: [ main, develop ]
+  push:
+    tags:
+      - 'v*'        # optional: Release beim Tag-Push, z.B. v1.2.3
+
+permissions:
+  contents: write   # nötig für Release + Assets
 
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-go@v5
         with:
           go-version: '1.22.x'
           cache: true
+
+      - run: go mod tidy
+      - run: make test
+
+      # Coverage erzeugen
+      - run: go test ./... -coverprofile=coverage.out -covermode=atomic
+
+      # Coverage als Artifact sichern
       - uses: actions/upload-artifact@v4
         with:
           name: coverage
           path: coverage.out
-      - run: go mod tidy
-      - run: make test
-      - run: go test ./... -coverprofile=coverage.out -covermode=atomic
+
+  # Plattform-übergreifend bauen (nur wenn Release-fähig getriggert)
+  build-binaries:
+    needs: test
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - goos: darwin   # macOS
+            goarch: arm64
+            ext: ""
+          - goos: linux
+            goarch: amd64
+            ext: ""
+          - goos: linux
+            goarch: arm64
+            ext: ""
+          - goos: windows
+            goarch: amd64
+            ext: ".exe"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22.x'
+          cache: true
+
+      # Version/Branch/Epoch bereitstellen
+      - id: meta
+        run: |
+          VERSION=$(cat version.txt 2>/dev/null || echo "0.0.0")
+          BRANCH="${GITHUB_REF_NAME}"
+          EPOCH=$(date +%s)
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "branch=${BRANCH}"   >> "$GITHUB_OUTPUT"
+          echo "epoch=${EPOCH}"     >> "$GITHUB_OUTPUT"
+
+      # Bauen (CGO aus, statischer Build wo möglich)
+      - name: Build ${{ matrix.goos }}-${{ matrix.goarch }}
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: 0
+          PKG: github.com/Weruminger/go-ad-admin
+          VERSION: ${{ steps.meta.outputs.version }}
+          BRANCH:  ${{ steps.meta.outputs.branch }}
+          EPOCH:   ${{ steps.meta.outputs.epoch }}
+        run: |
+          BIN_NAME="go-ad-admin_${GOOS}_${GOARCH}${{ matrix.ext }}"
+          OUT_DIR="dist"
+          mkdir -p "$OUT_DIR"
+
+          LDFLAGS="-X '${PKG}/internal/app.VersionBase=${VERSION}' \
+                   -X '${PKG}/internal/app.GitBranch=${BRANCH}' \
+                   -X '${PKG}/internal/app.BuildEpoch=${EPOCH}'"
+
+          go build -ldflags "$LDFLAGS" -o "${OUT_DIR}/${BIN_NAME}" ./cmd/go-ad-admin
+
+          # packen: .tar.gz für Unix, .zip für Windows
+          cd "$OUT_DIR"
+          if [ "${GOOS}" = "windows" ]; then
+            zip "${BIN_NAME%.exe}.zip" "${BIN_NAME}"
+            rm -f "${BIN_NAME}"
+          else
+            tar -czf "${BIN_NAME}.tar.gz" "${BIN_NAME}"
+            rm -f "${BIN_NAME}"
+          fi
+          ls -lah
+
+      # Artefakte zur Übergabe an Release-Job hochladen
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: dist/*
+
+  # Release erstellen und Assets anhängen
+  release:
+    needs: build-binaries
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Version erneut lesen (für tag/name)
+      - id: meta
+        run: |
+          VERSION=$(cat version.txt 2>/dev/null || echo "0.0.0")
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
+      # Alle gebauten Artefakte einsammeln
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist-collect
+
+      # Optional: zusammenführen nach dist/
+      - run: |
+        mkdir -p dist
+        find dist-collect -type f -maxdepth 2 -exec cp {} dist/ \;
+        ls -lah dist
+
+      # Release erzeugen (Tag = v<version>), Assets anhängen
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.meta.outputs.version }}
+          name: v${{ steps.meta.outputs.version }}
+          draft: false
+          prerelease: ${{ github.ref_type != 'tag' && github.ref_name != 'main' && github.ref_name != 'prod' }}
+          files: |
+            dist/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
