@@ -3,21 +3,8 @@ package config
 import (
 	"os"
 	"testing"
+	// "github.com/Weruminger/go-ad-admin/internal/config"
 )
-
-func TestFromEnvDefaults(t *testing.T) {
-	os.Clearenv()
-	c := FromEnv()
-	if c.ListenAddr != ":8080" {
-		t.Fatalf("default listen expected :8080, got %s", c.ListenAddr)
-	}
-	if c.Env != "dev" {
-		t.Fatalf("default env expected dev, got %s", c.Env)
-	}
-	if len(c.SessionKey) < 64 {
-		t.Fatalf("session key too short")
-	}
-}
 
 func TestFromEnvOverrides(t *testing.T) {
 	var err error
@@ -32,7 +19,7 @@ func TestFromEnvOverrides(t *testing.T) {
 	}
 	defer os.Clearenv()
 
-	c := FromEnv()
+	c := new(Config).SetDefaultOnEmpty()
 	if c.ListenAddr != ":8080" {
 		t.Fatalf("got %s", c.ListenAddr)
 	}

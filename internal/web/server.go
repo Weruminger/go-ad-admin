@@ -6,16 +6,16 @@ import (
 	"net/http"
 	"path/filepath"
 
-	"github.com/Weruminger/go-ad-admin/internal/config"
+	. "github.com/Weruminger/go-ad-admin/internal/config"
 	"github.com/Weruminger/go-ad-admin/internal/errs"
 )
 
 type Server struct {
-	cfg config.Config
+	cfg Config
 	tpl *template.Template
 }
 
-func NewServer(cfg config.Config) *Server {
+func NewServer(cfg Config) *Server {
 	const glob = "web/templates/*.html"
 	t, err := template.ParseGlob(glob)
 	if err != nil || t == nil {
@@ -51,6 +51,6 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	_ = s.tpl.ExecuteTemplate(w, "layout", map[string]any{"Env": s.cfg.Env})
 }
 
-func ListenAndServe(cfg config.Config) error {
+func ListenAndServe(cfg Config) error {
 	return http.ListenAndServe(cfg.ListenAddr, NewServer(cfg).routes())
 }
