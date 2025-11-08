@@ -134,10 +134,11 @@ jobs:
           path: dist-collect
 
       # Optional: zusammenführen nach dist/
-      - run: |
-        mkdir -p dist
-        find dist-collect -type f -maxdepth 2 -exec cp {} dist/ \;
-        ls -lah dist
+      - name: Merge artifacts
+        run: |
+          mkdir -p dist
+          find dist-collect -type f -maxdepth 2 -exec cp {} dist/ \;
+          ls -lah dist
 
       # Release erzeugen (Tag = v<version>), Assets anhängen
       - name: Create GitHub Release
