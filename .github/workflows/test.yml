@@ -154,6 +154,7 @@ jobs:
           name: v${{ steps.meta.outputs.version }}
           draft: false
           prerelease: ${{ github.ref_type != 'tag' && github.ref_name != 'main' && github.ref_name != 'prod' }}
+          generate_release_notes: true
           files: |
             dist/*
         env:
