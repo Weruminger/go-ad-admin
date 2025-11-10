@@ -16,7 +16,7 @@ go run ./cmd/go-ad-admin
 
 | VAR               | Default | Description |
 |-------------------|---------|-------------|
-| GO_AD_LISTEN      | :8080 | Bind address |
+| GO_AD_LISTEN      | :8080 | Bind port |
 | GO_AD_ENV         | dev | dev/prod |
 | GO_AD_SESSION_KEY | (random at start) | 32+ bytes recommended |
 | GO_AD_LDAP_URL    | ldap://127.0.0.1:389 | LDAP/LDAPS URL |
